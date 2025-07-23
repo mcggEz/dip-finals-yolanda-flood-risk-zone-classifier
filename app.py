@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Yolanda Risk Zone Classifier", layout="wide")
 # Main Title
-st.title("Yolanda Risk Zone Classifier")
+st.title("Yolanda Risk Zone Classifier -DIP Group 4 2025")
 
 # Section 1: Map Viewer
 with st.container():
