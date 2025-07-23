@@ -12,5 +12,5 @@ def show_batch_analysis():
         """,
         unsafe_allow_html=True
     )
-    st.file_uploader("", accept_multiple_files=True, key="batch_upload")
+    st.file_uploader("Upload multiple patches", accept_multiple_files=True, key="batch_upload")
     st.button("Export results to CSV", key="export_csv_btn") 

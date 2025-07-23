@@ -14,4 +14,7 @@ def show_overlays():
         </div>
         """,
         unsafe_allow_html=True
-    ) 
+    )
+    st.checkbox("Show Flood Overlay", key="show_flood")
+    st.checkbox("Show Shelter Markers", key="show_shelters")
+    st.checkbox("Show Buffer Zones", key="show_buffer") 

@@ -9,8 +9,8 @@ def show_patch_selector():
         """,
         unsafe_allow_html=True
     )
-    st.selectbox("", ["Patch 1", "Patch 2"], key="patch_select")
-    st.file_uploader("", key="patch_upload")
+    st.selectbox("Select Patch", ["Patch 1", "Patch 2"], key="patch_select")
+    st.file_uploader("Or upload a patch", key="patch_upload")
     st.button("Classify Patch", key="classify_patch_btn")
     st.markdown(
         "<div style='margin-top:0.7rem; color:#36b9cc;'><b>Predicted Class:</b> ...</div>",
