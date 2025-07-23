@@ -64,7 +64,9 @@ with st.sidebar:
         </div>
 
         <div style='text-align:center; margin-bottom:1rem;'>
-            <span style='font-size:1.1rem; color:#fff;'>Descritpion about the app....</span>
+            <span style='font-size:1rem; color:#fff;'>
+                    An interactive dashboard for visualizing, analyzing, and classifying disaster risk zones affected by Typhoon Yolanda using satellite imagery, hazard overlays, and deep learning.
+            </span>
         </div>
         """,
         unsafe_allow_html=True
@@ -72,7 +74,7 @@ with st.sidebar:
     
 
   
-    with st.expander("🗺️ Overlays, Markers and Zones  View and toggle map overlays, shelter markers, and buffer zones for risk visualization." , expanded=True):
+    with st.expander("🗺️ Overlays, Markers and Zones - View and toggle map overlays, shelter markers, and buffer zones for risk visualization." , expanded=True):
         st.markdown(
             """
             <div style='background:#23272f; border-radius:12px; box-shadow:0 2px 8px #0002; margin-bottom:1rem; padding:1.2rem 1.4rem; font-size:1.08rem;'>
@@ -92,7 +94,7 @@ with st.sidebar:
         )
 
 
-    with st.expander("🧩 Patch Selectors Select or upload a patch for classification and risk analysis.", expanded=False):
+    with st.expander("🧩 Patch Selectors - Select or upload a patch for classification and risk analysis.", expanded=False):
         st.markdown(
             """
             <div style='background:#23272f; border-radius:12px; box-shadow:0 2px 8px #0002; margin-bottom:1rem; padding:1.2rem 1.4rem; font-size:1.08rem;'>
@@ -120,7 +122,7 @@ with st.sidebar:
         )
 
 
-    with st.expander("📋 Metadata Viewer   View detailed metadata for the selected patch, including hazard score and location info.", expanded=False):
+    with st.expander("📋 Metadata Viewer - View detailed metadata for the selected patch, including hazard score and location info.", expanded=False):
         st.markdown(
             """
             <div style='background:#23272f; border-radius:12px; box-shadow:0 2px 8px #0002; margin-bottom:1rem; padding:1.2rem 1.4rem; font-size:1.08rem;'>
@@ -135,7 +137,7 @@ with st.sidebar:
         )
 
 
-    with st.expander("📊 Batch Analysis  Upload and analyze multiple patches at once, view heatmaps, and export results.", expanded=False):
+    with st.expander("📊 Batch Analysis - Upload and analyze multiple patches at once, view heatmaps, and export results.", expanded=False):
         st.markdown(
             """
             <div style='background:#23272f; border-radius:12px; box-shadow:0 2px 8px #0002; margin-bottom:1rem; padding:1.2rem 1.4rem; font-size:1.08rem;'>
@@ -158,7 +160,7 @@ with st.sidebar:
     st.markdown(
         """
         <div style='font-size:0.95rem; color:#aaa; font-style:italic; margin-bottom:0.5rem;'>
-        This is for partial requirement for the course DIP Computer Engineering.<br><br>
+        This is for partial requirement for the Digital Image Processing course in Computer Engineering at Pamantasan ng Lungsod ng Maynila.<br><br>
         <b>Members:</b><br>
         <ul style='color:#fff; font-size:0.98rem; margin-top:0;'>
         <li>Mc Giberri M. Ginez</li>
@@ -184,11 +186,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# (Optional) Footer
-# st.markdown(
-#     "<div style='background-color: #808080; padding: 20px; text-align: center; color: white; font-size: 18px; font-weight: bold;'>Footer Content Here</div>",
-#     unsafe_allow_html=True
-# )
 
 
 
