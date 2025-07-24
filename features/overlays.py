@@ -1,7 +1,17 @@
 import streamlit as st
-import pydeck as pdk
-import json
+from streamlit_folium import st_folium
+import folium
 
+# Sample overlay data
+FLOOD_POLYGON = [
+    [13.0, 123.0], [13.0, 124.0], [12.0, 124.0], [12.0, 123.0], [13.0, 123.0]
+]
+SAFEZONE_POLYGON = [
+    [11.5, 121.5], [11.5, 122.5], [10.5, 122.5], [10.5, 121.5], [11.5, 121.5]
+]
+SHELTER_POINTS = [
+    [12.5, 122.5], [12.7, 122.7], [12.3, 122.3]
+]
 
 def show_overlays():
     st.markdown(
@@ -34,59 +44,48 @@ def show_overlays():
     return show_flood, show_shelters, show_buffer
 
 def render_overlay_main_content(show_flood, show_shelters, show_buffer):
-    # Load the GeoJSON polygon
-    with open("data/Sketch.geojson") as f:
-        geojson_data = json.load(f)
+    # Center the map on the Philippines with ESRI satellite basemap
+    m = folium.Map(location=[12.5, 122.5], zoom_start=6, tiles=None)
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri",
+        name="Esri Satellite",
+        overlay=False,
+        control=True
+    ).add_to(m)
 
-    # Extract bounds from the polygon
-    coords = geojson_data['features'][0]['geometry']['coordinates'][0]
-    min_lon = min([c[0] for c in coords])
-    max_lon = max([c[0] for c in coords])
-    min_lat = min([c[1] for c in coords])
-    max_lat = max([c[1] for c in coords])
-    bounds = [min_lon, min_lat, max_lon, max_lat]
+    # Flood-prone area polygon
+    if show_flood:
+        folium.Polygon(
+            locations=[[13.0, 123.0], [13.0, 124.0], [12.0, 124.0], [12.0, 123.0]],
+            color="blue",
+            fill=True,
+            fill_opacity=0.4,
+            popup="Flood-prone Area"
+        ).add_to(m)
 
-    # Style from properties
-    props = geojson_data['features'][0]['properties']
-    fill_color = [255, 255, 255, int(float(props.get('fill-opacity', 0.4)) * 255)]
-    stroke_color = [255, 204, 51, int(float(props.get('stroke-opacity', 1)) * 255)]
-    stroke_width = int(props.get('stroke-width', 4))
+    # Safe zone polygon
+    if show_buffer:
+        folium.Polygon(
+            locations=[[11.5, 121.5], [11.5, 122.5], [10.5, 122.5], [10.5, 121.5]],
+            color="cyan",
+            fill=True,
+            fill_opacity=0.4,
+            popup="Safe Zone"
+        ).add_to(m)
 
-    # BitmapLayer for your PNG
-    bitmap_layer = pdk.Layer(
-        "BitmapLayer",
-        data=None,
-        image="data/yolanda.png",
-        bounds=bounds,
-        opacity=0.7,
-    )
+    # Emergency shelter markers
+    if show_shelters:
+        for lat, lon in [[12.5, 122.5], [12.7, 122.7], [12.3, 122.3]]:
+            folium.Marker(
+                location=[lat, lon],
+                icon=folium.Icon(color="green", icon="home"),
+                popup="Emergency Shelter"
+            ).add_to(m)
 
-    # GeoJsonLayer for your polygon
-    geojson_layer = pdk.Layer(
-        "GeoJsonLayer",
-        geojson_data,
-        stroked=True,
-        filled=True,
-        get_fill_color=fill_color,
-        get_line_color=stroke_color,
-        get_line_width=stroke_width,
-    )
+    st_folium(m, width=1200, height=550)
 
-    view_state = pdk.ViewState(
-        longitude=(min_lon + max_lon) / 2,
-        latitude=(min_lat + max_lat) / 2,
-        zoom=5,
-        pitch=0,
-    )
-
-    r = pdk.Deck(
-        layers=[bitmap_layer, geojson_layer],
-        initial_view_state=view_state,
-        map_style=None,
-    )
-
-    st.pydeck_chart(r)
-
+    # Overlay labels
     overlay_labels = []
     if show_flood:
         overlay_labels.append("🌀 Flood")
