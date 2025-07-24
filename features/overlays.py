@@ -1,6 +1,8 @@
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
+import geopandas as gpd
+import pandas as pd
 
 # Sample overlay data
 FLOOD_POLYGON = [
@@ -41,9 +43,27 @@ def show_overlays():
         unsafe_allow_html=True
     )
     show_buffer = st.checkbox("Show", key="show_buffer")
-    return show_flood, show_shelters, show_buffer
+    st.markdown(
+        """
+        <div class='sidebar-card' style='background:#5e2222;'>
+            <b style='color:#e74c3c;'>🟥 Overlay:</b> <span style='color:#fff;'>Hazard Exposure Zones (PHIVOLCS)</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    show_hazard = st.checkbox("Show", key="show_hazard")
+    st.markdown(
+        """
+        <div class='sidebar-card' style='background:#228B22;'>
+            <b style='color:#39e639;'>🟩 Marker:</b> <span style='color:#fff;'>Evacuation Centers and Relief Hubs</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    show_evac = st.checkbox("Show", key="show_evac")
+    return show_flood, show_shelters, show_buffer, show_hazard, show_evac
 
-def render_overlay_main_content(show_flood, show_shelters, show_buffer):
+def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_hazard, show_evac):
     # Center the map on the Philippines with ESRI satellite basemap
     m = folium.Map(location=[12.5, 122.5], zoom_start=6, tiles=None)
     folium.TileLayer(
@@ -58,7 +78,7 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer):
     if show_flood:
         folium.Polygon(
             locations=[[13.0, 123.0], [13.0, 124.0], [12.0, 124.0], [12.0, 123.0]],
-            color="blue",
+            color="red",
             fill=True,
             fill_opacity=0.4,
             popup="Flood-prone Area"
@@ -83,6 +103,43 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer):
                 popup="Emergency Shelter"
             ).add_to(m)
 
+    # Hazard Exposure Zones (PHIVOLCS) from shapefile
+    if show_hazard:
+        try:
+            hazard_gdf = gpd.read_file('overlays/ph.shp')
+            # Ensure CRS is set from .prj, or default to WGS84
+            if hazard_gdf.crs is None:
+                hazard_gdf.set_crs(epsg=4326, inplace=True)
+            # Reproject to WGS84 for folium if needed
+            if hazard_gdf.crs.to_epsg() != 4326:
+                hazard_gdf = hazard_gdf.to_crs(epsg=4326)
+            folium.GeoJson(
+                hazard_gdf,
+                name='Hazard Exposure Zones',
+                style_function=lambda x: {
+                    'fillColor': 'red',
+                    'color': 'red',
+                    'weight': 2,
+                    'fillOpacity': 0.4
+                },
+                tooltip=folium.GeoJsonTooltip(fields=[col for col in hazard_gdf.columns if col != 'geometry'])
+            ).add_to(m)
+        except Exception as e:
+            st.error(f"Error loading hazard shapefile: {e}")
+
+    # Evacuation Centers and Relief Hubs from CSV
+    if show_evac:
+        try:
+            evac_df = pd.read_csv('overlays/evacuation_centers.csv')
+            for _, row in evac_df.iterrows():
+                folium.Marker(
+                    location=[row['LAT'], row['LONG']],
+                    icon=folium.Icon(color="green", icon="info-sign"),
+                    popup=f"<b>{row['NAME_1']}</b><br>Region: {row['REGION']}<br>Evac Centers: {row['Evac_Cntrs']}"
+                ).add_to(m)
+        except Exception as e:
+            st.error(f"Error loading evacuation centers: {e}")
+
     st_folium(m, width=1200, height=550)
 
     # Overlay labels
@@ -93,5 +150,9 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer):
         overlay_labels.append("🏠 Shelters")
     if show_buffer:
         overlay_labels.append("🔵 Buffer")
+    if show_hazard:
+        overlay_labels.append("🟥 Hazard Zones")
+    if show_evac:
+        overlay_labels.append("🟩 Evacuation Centers")
     if overlay_labels:
         st.markdown(f"<div style='color:#1cc88a; font-size:1.2rem;'>Active overlays: {', '.join(overlay_labels)}</div>", unsafe_allow_html=True) 

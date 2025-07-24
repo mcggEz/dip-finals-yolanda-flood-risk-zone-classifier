@@ -74,7 +74,7 @@ with st.sidebar:
     )
     
     with st.expander("🗺️ Overlays, Markers and Zones - View and toggle map overlays, shelter markers, and buffer zones for risk visualization.", expanded=True):
-        show_flood, show_shelters, show_buffer = show_overlays()
+        show_flood, show_shelters, show_buffer, show_hazard, show_evac = show_overlays()
 
     with st.expander("🧩 Patch Selectors - Select or upload a patch for classification and risk analysis.", expanded=False):
         show_patch_selector()
@@ -103,7 +103,7 @@ with st.sidebar:
     )
 
 # Main content
-render_overlay_main_content(show_flood, show_shelters, show_buffer)
+render_overlay_main_content(show_flood, show_shelters, show_buffer, show_hazard, show_evac)
 
 
 
