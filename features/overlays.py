@@ -35,7 +35,7 @@ def show_overlays():
 
 def render_overlay_main_content(show_flood, show_shelters, show_buffer):
     # Load the GeoJSON polygon
-    with open("c:/Users/mcgg/Downloads/Sketch.geojson") as f:
+    with open("data/Sketch.geojson") as f:
         geojson_data = json.load(f)
 
     # Extract bounds from the polygon
