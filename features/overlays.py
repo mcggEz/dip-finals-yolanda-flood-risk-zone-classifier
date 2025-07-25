@@ -18,35 +18,8 @@ SHELTER_POINTS = [
 def show_overlays():
     st.markdown(
         """
-        <div class='sidebar-card' style='background:#223a5e;'>
-            <b style='color:#1cc88a;'>🌀 Overlay:</b> <span style='color:#fff;'>Flood-prone areas (map overlays)</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    show_flood = st.checkbox("Show", key="show_flood")
-    st.markdown(
-        """
-        <div class='sidebar-card' style='background:#4e4e2e;'>
-            <b style='color:#f6c23e;'>🏠 Marker:</b> <span style='color:#fff;'>Emergency shelter locations</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    show_shelters = st.checkbox("Show", key="show_shelters")
-    st.markdown(
-        """
-        <div class='sidebar-card' style='background:#225e5e;'>
-            <b style='color:#36b9cc;'>🔵 Zone:</b> <span style='color:#fff;'>Cyan buffer/safe zones</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    show_buffer = st.checkbox("Show", key="show_buffer")
-    st.markdown(
-        """
         <div class='sidebar-card' style='background:#5e2222;'>
-            <b style='color:#e74c3c;'>🟥 Overlay:</b> <span style='color:#fff;'>Hazard Exposure Zones (PHIVOLCS)</span>
+            <b style='color:#e74c3c;'>🟥 Overlay:</b> <span style='color:#fff;'>Hazard overlays (PHIVOLCS, PAGASA)</span>
         </div>
         """,
         unsafe_allow_html=True
@@ -55,15 +28,24 @@ def show_overlays():
     st.markdown(
         """
         <div class='sidebar-card' style='background:#228B22;'>
-            <b style='color:#39e639;'>🟩 Marker:</b> <span style='color:#fff;'>Evacuation Centers and Relief Hubs</span>
+            <b style='color:#39e639;'>🟩 Marker:</b> <span style='color:#fff;'>Shelter markers (GeoAnalyticsPH)</span>
         </div>
         """,
         unsafe_allow_html=True
     )
     show_evac = st.checkbox("Show", key="show_evac")
-    return show_flood, show_shelters, show_buffer, show_hazard, show_evac
+    st.markdown(
+        """
+        <div class='sidebar-card' style='background:#225e5e;'>
+            <b style='color:#36b9cc;'>🔵 Zone:</b> <span style='color:#fff;'>Buffer zones (cyan overlay)</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    show_buffer = st.checkbox("Show", key="show_buffer")
+    return show_hazard, show_evac, show_buffer
 
-def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_hazard, show_evac):
+def render_overlay_main_content(show_hazard, show_evac, show_buffer):
     # Center the map on the Philippines with ESRI satellite basemap
     m = folium.Map(location=[12.5, 122.5], zoom_start=6, tiles=None)
     folium.TileLayer(
@@ -74,48 +56,17 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_haz
         control=True
     ).add_to(m)
 
-    # Flood-prone area polygon
-    if show_flood:
-        folium.Polygon(
-            locations=[[13.0, 123.0], [13.0, 124.0], [12.0, 124.0], [12.0, 123.0]],
-            color="red",
-            fill=True,
-            fill_opacity=0.4,
-            popup="Flood-prone Area"
-        ).add_to(m)
-
-    # Safe zone polygon
-    if show_buffer:
-        folium.Polygon(
-            locations=[[11.5, 121.5], [11.5, 122.5], [10.5, 122.5], [10.5, 121.5]],
-            color="cyan",
-            fill=True,
-            fill_opacity=0.4,
-            popup="Safe Zone"
-        ).add_to(m)
-
-    # Emergency shelter markers
-    if show_shelters:
-        for lat, lon in [[12.5, 122.5], [12.7, 122.7], [12.3, 122.3]]:
-            folium.Marker(
-                location=[lat, lon],
-                icon=folium.Icon(color="green", icon="home"),
-                popup="Emergency Shelter"
-            ).add_to(m)
-
-    # Hazard Exposure Zones (PHIVOLCS) from shapefile
+    # Hazard overlays (PHIVOLCS, PAGASA) from shapefile
     if show_hazard:
         try:
             hazard_gdf = gpd.read_file('overlays/ph.shp')
-            # Ensure CRS is set from .prj, or default to WGS84
             if hazard_gdf.crs is None:
                 hazard_gdf.set_crs(epsg=4326, inplace=True)
-            # Reproject to WGS84 for folium if needed
             if hazard_gdf.crs.to_epsg() != 4326:
                 hazard_gdf = hazard_gdf.to_crs(epsg=4326)
             folium.GeoJson(
                 hazard_gdf,
-                name='Hazard Exposure Zones',
+                name='Hazard Overlays',
                 style_function=lambda x: {
                     'fillColor': 'red',
                     'color': 'red',
@@ -127,7 +78,7 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_haz
         except Exception as e:
             st.error(f"Error loading hazard shapefile: {e}")
 
-    # Evacuation Centers and Relief Hubs from CSV
+    # Shelter markers (GeoAnalyticsPH) from CSV
     if show_evac:
         try:
             evac_df = pd.read_csv('overlays/evacuation_centers.csv')
@@ -144,19 +95,38 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_haz
         except Exception as e:
             st.error(f"Error loading evacuation centers: {e}")
 
+    # Buffer zones (cyan overlay) as circles
+    if show_buffer:
+        buffer_points = [
+            [11.00, 122.80], [11.20, 124.90], [10.60, 125.10], [11.50, 125.10], [10.90, 122.70],
+            [11.30, 123.00], [10.80, 124.00], [11.60, 124.20], [10.40, 123.50], [11.10, 125.30],
+            [11.70, 124.80], [10.20, 122.90],
+        ]
+        for lat, lon in buffer_points:
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=8,
+                color='cyan',
+                fill=True,
+                fill_color='cyan',
+                fill_opacity=0.6,
+                popup="Safe Zone Buffer Point"
+            ).add_to(m)
+
     st_folium(m, width=None, height=600)
 
     # Overlay labels
     overlay_labels = []
-    if show_flood:
-        overlay_labels.append("🌀 Flood")
-    if show_shelters:
-        overlay_labels.append("🏠 Shelters")
-    if show_buffer:
-        overlay_labels.append("🔵 Buffer")
     if show_hazard:
-        overlay_labels.append("🟥 Hazard Zones")
+        overlay_labels.append("🟥 Hazard Overlays")
     if show_evac:
-        overlay_labels.append("🟩 Evacuation Centers")
+        overlay_labels.append("🟩 Shelter Markers")
+    if show_buffer:
+        overlay_labels.append("🔵 Buffer Zones")
     if overlay_labels:
-        st.markdown(f"<div style='color:#1cc88a; font-size:1.2rem;'>Active overlays: {', '.join(overlay_labels)}</div>", unsafe_allow_html=True) 
+        st.markdown(f"<div style='color:#1cc88a; font-size:0.95rem;'>Active overlays: {', '.join(overlay_labels)}</div>", unsafe_allow_html=True)
+
+    # Save Image button at the bottom
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)  # Spacer
+    if st.button('💾 Save Image', key='save_image'):
+        st.info('To save the map as an image, use your browser\'s screenshot or print-to-PDF feature. Direct image export is not supported in Streamlit-Folium.') 
