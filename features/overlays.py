@@ -144,7 +144,7 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_haz
         except Exception as e:
             st.error(f"Error loading evacuation centers: {e}")
 
-    st_folium(m, width=1200, height=550)
+    st_folium(m, width=None, height=600)
 
     # Overlay labels
     overlay_labels = []
