@@ -132,9 +132,13 @@ def render_overlay_main_content(show_flood, show_shelters, show_buffer, show_haz
         try:
             evac_df = pd.read_csv('overlays/evacuation_centers.csv')
             for _, row in evac_df.iterrows():
-                folium.Marker(
+                folium.CircleMarker(
                     location=[row['LAT'], row['LONG']],
-                    icon=folium.Icon(color="green", icon="info-sign"),
+                    radius=8,
+                    color='green',
+                    fill=True,
+                    fill_color='green',
+                    fill_opacity=0.8,
                     popup=f"<b>{row['NAME_1']}</b><br>Region: {row['REGION']}<br>Evac Centers: {row['Evac_Cntrs']}"
                 ).add_to(m)
         except Exception as e:
