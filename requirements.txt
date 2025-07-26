@@ -9,6 +9,4 @@ pandas
 numpy
 Pillow
 opencv-python
-shapely 
-selenium
-webdriver_manager
+shapely
