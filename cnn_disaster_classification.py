@@ -230,10 +230,19 @@ def train_model(X, y, class_names, epochs=5):
     """
     print("Training CNN model (MATLAB-style)...")
     
-    # Split data (80% train, 20% test) - like MATLAB's splitEachLabel
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+    # Handle very small datasets (less than 30 total images)
+    if len(X) < 30:
+        print("⚠️  Small dataset detected - using all data for training")
+        print("   (For production, add more images per class)")
+        
+        # For very small datasets, use all data for training
+        X_train, y_train = X, y
+        X_test, y_test = X, y  # Use same data for testing (not ideal but works for demo)
+    else:
+        # Normal split for larger datasets
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
     
     print(f"Training samples: {len(X_train)}")
     print(f"Test samples: {len(X_test)}")

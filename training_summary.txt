@@ -1,0 +1,7 @@
+Disaster Zone Classification Results
+=====================================
+Final Accuracy: 11.11%
+Classes: BufferZone_Proposed, EvacCenter_Active, HighRisk_Coastal, ModerateRisk_Upland, SafeZone_UrbanCore, WarningGap_Barangay
+Total Test Samples: 18
+Correct Predictions: 2
+Incorrect Predictions: 16

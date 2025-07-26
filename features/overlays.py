@@ -143,8 +143,7 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
                     color='blue',
                     fill=True,
                     fill_color='blue',
-                    fill_opacity=0.7,
-                    popup=f"<b>{row['City']}</b><br>Province: {row['Province']}"
+                    fill_opacity=0.7
                 ).add_to(m)
         except Exception as e:
             st.error(f"Error loading PAGASA warning points: {e}")
@@ -160,8 +159,7 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
                     color='green',
                     fill=True,
                     fill_color='green',
-                    fill_opacity=0.8,
-                    popup=f"<b>{row['NAME_1']}</b><br>Region: {row['REGION']}<br>Evac Centers: {row['Evac_Cntrs']}"
+                    fill_opacity=0.8
                 ).add_to(m)
         except Exception as e:
             st.error(f"Error loading evacuation centers: {e}")
@@ -212,8 +210,7 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
                     fill=True,
                     fill_color='cyan',
                     fill_opacity=0.2,
-                    weight=2,
-                    popup=f"<b>Buffer Zone</b><br>Shelter: {row['NAME_1']}<br>Region: {row['REGION']}"
+                    weight=2
                 ).add_to(m)
         except Exception as e:
             st.error(f"Error generating buffer zones: {e}")
@@ -346,14 +343,12 @@ def add_patch_selection_to_map(m):
             weight=3,
             fillColor='blue',
             fillOpacity=0.0,
-            dashArray='10, 10',
-            popup=f"<b>Your Selected Patch</b><br>Center: {selected['center_lat']:.4f}°, {selected['center_lng']:.4f}°<br>Size: 224x224 pixels<br>Time: {selected['timestamp']}"
+            dashArray='10, 10'
         ).add_to(m)
         
         # Also add a center marker for better visibility
         folium.Marker(
             location=[selected['center_lat'], selected['center_lng']],
-            popup=f"<b>Patch Center</b><br>{selected['center_lat']:.6f}°, {selected['center_lng']:.6f}°",
             icon=folium.Icon(color='blue', icon='info-sign')
         ).add_to(m)
 
@@ -386,14 +381,148 @@ def display_patch_image(center_lat, center_lng, patch_bounds):
         st.warning("⚠️ **No overlays active** - Only base satellite imagery will be captured")
         st.info("💡 **Tip:** Enable overlays in the sidebar to capture them in the PNG.")
     
-    # Use the fallback method directly (no Selenium dependency)
-    fallback_to_tile_method(center_lat, center_lng)
+    try:
+        # Try server-side rendering first (with Selenium)
+        patch_img = capture_map_with_overlays(center_lat, center_lng)
+        
+        if patch_img:
+            # Display the captured patch image with overlays
+            caption = f"224x224 Pixel Patch at {center_lat:.4f}°, {center_lng:.4f}°"
+            active_overlays = get_active_overlays()
+            if active_overlays:
+                caption += f" (with {', '.join(active_overlays)} overlays)"
+            
+            st.image(patch_img, caption=caption, use_container_width=False)
+            
+            # Add download button for the patch
+            import io
+            img_buffer = io.BytesIO()
+            patch_img.save(img_buffer, format='PNG')
+            img_data = img_buffer.getvalue()
+            
+            st.download_button(
+                label="📥 Download Patch PNG",
+                data=img_data,
+                file_name=f"patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+                mime="image/png"
+            )
+            
+            # Show overlay information
+            if active_overlays:
+                st.success(f"✅ **Real overlays captured:** {', '.join(active_overlays)}")
+                st.info("💡 **Tip:** If overlays don't appear, try enabling them in the sidebar and clicking the map again.")
+            else:
+                st.info("📷 **Base satellite imagery** - no overlays active")
+                st.info("💡 **Tip:** Enable overlays in the sidebar to capture them in the PNG.")
+        else:
+            # Fallback to tile-based method
+            fallback_to_tile_method(center_lat, center_lng)
+            
+    except Exception as e:
+        st.error(f"Error with server-side rendering: {e}")
+        st.info("🔄 Falling back to tile-based method...")
+        fallback_to_tile_method(center_lat, center_lng)
 
-# Selenium function removed for Streamlit Cloud compatibility
-# def capture_map_with_overlays(center_lat, center_lng, zoom_level=15):
-#     """Capture map with overlays using Selenium headless browser"""
-#     # This function was removed to fix Selenium deployment issues on Streamlit Cloud
-#     pass
+def capture_map_with_overlays(center_lat, center_lng, zoom_level=15):
+    """Capture map with overlays using Selenium headless browser"""
+    
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
+        from webdriver_manager.chrome import ChromeDriverManager
+        from PIL import Image
+        import io
+        import os
+        
+        # Create headless Chrome options
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=800,600")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--allow-running-insecure-content")
+        
+        # Setup Chrome driver
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        try:
+            # Instead of creating a separate map, let's try to capture the actual main map
+            # We'll create a simplified version that matches the main map exactly
+            html_content = create_main_map_html(center_lat, center_lng, zoom_level)
+            
+            # Save to temp file
+            temp_file = "temp_map.html"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            
+            # Load the map in browser
+            driver.get(f"file:///{os.path.abspath(temp_file)}")
+            driver.implicitly_wait(15)  # Wait longer for map to load
+            
+            # Additional wait for tiles and overlays to load
+            import time
+            time.sleep(5)  # Increased wait time
+            
+            # Additional wait after overlay detection
+            time.sleep(3)
+            
+            # Force overlay visibility with JavaScript
+            try:
+                driver.execute_script("""
+                    // Make all overlays more visible
+                    document.querySelectorAll('path[stroke]').forEach(function(path) {
+                        path.style.strokeWidth = '3px';
+                        path.style.strokeOpacity = '0.8';
+                    });
+                    document.querySelectorAll('circle[stroke]').forEach(function(circle) {
+                        circle.style.strokeWidth = '3px';
+                        circle.style.strokeOpacity = '0.8';
+                    });
+                """)
+                time.sleep(1)
+            except Exception as e:
+                st.warning(f"⚠️ Could not enhance overlay visibility: {str(e)}")
+            
+            # Take screenshot
+            screenshot = driver.get_screenshot_as_png()
+            
+            # Convert to PIL Image
+            img = Image.open(io.BytesIO(screenshot))
+            
+            # Crop to 224x224 patch area (center of screenshot)
+            width, height = img.size
+            center_x, center_y = width // 2, height // 2
+            patch_size = 224
+            
+            # Calculate crop bounds
+            left = max(0, center_x - patch_size // 2)
+            top = max(0, center_y - patch_size // 2)
+            right = min(width, left + patch_size)
+            bottom = min(height, top + patch_size)
+            
+            # Crop the patch
+            patch_img = img.crop((left, top, right, bottom))
+            
+            # Resize to exactly 224x224 if needed
+            if patch_img.size != (224, 224):
+                patch_img = patch_img.resize((224, 224), Image.Resampling.LANCZOS)
+            
+            # Clean up temp file
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            
+            return patch_img
+            
+        finally:
+            driver.quit()
+            
+    except Exception as e:
+        st.error(f"Selenium error: {e}")
+        return None
 
 def create_main_map_html(center_lat, center_lng, zoom_level):
     """Create HTML with Folium map and active overlays"""
@@ -441,8 +570,7 @@ def create_main_map_html(center_lat, center_lng, zoom_level):
                     color='blue',
                     fill=True,
                     fill_color='blue',
-                    fill_opacity=0.7,
-                    popup=f"<b>{row['City']}</b><br>Province: {row['Province']}"
+                    fill_opacity=0.7
                 ).add_to(m)
         except Exception as e:
             st.error(f"Error loading PAGASA warning points: {e}")
@@ -458,8 +586,7 @@ def create_main_map_html(center_lat, center_lng, zoom_level):
                     color='green',
                     fill=True,
                     fill_color='green',
-                    fill_opacity=0.8,
-                    popup=f"<b>{row['NAME_1']}</b><br>Region: {row['REGION']}<br>Evac Centers: {row['Evac_Cntrs']}"
+                    fill_opacity=0.8
                 ).add_to(m)
         except Exception as e:
             st.error(f"Error loading evacuation centers: {e}")
@@ -477,8 +604,7 @@ def create_main_map_html(center_lat, center_lng, zoom_level):
                     fill=True,
                     fill_color='cyan',
                     fill_opacity=0.3,
-                    weight=2,
-                    popup=f"<b>Buffer Zone</b><br>Center: {row['NAME_1']}"
+                    weight=2
                 ).add_to(m)
             st.info("🔵 Buffer zones added to capture map")
         except Exception as e:
@@ -530,8 +656,7 @@ def create_main_map_html(center_lat, center_lng, zoom_level):
         weight=3,
         fillColor='blue',
         fillOpacity=0.0,
-        dashArray='10, 10',
-        popup=f"<b>Selected Patch</b><br>Center: {center_lat:.4f}°, {center_lng:.4f}°<br>Size: 224x224 pixels"
+        dashArray='10, 10'
     ).add_to(m)
     
     # Create complete HTML with proper styling
@@ -605,7 +730,7 @@ def get_active_overlays():
     return active_overlays
 
 def fallback_to_tile_method(center_lat, center_lng):
-    """Fallback to the original tile-based method"""
+    """Improved tile-based method that captures multiple tiles for accurate 224x224 patches"""
     
     # Calculate zoom level and tile coordinates for ESRI satellite tiles
     zoom_level = 15  # High resolution zoom level
@@ -618,61 +743,89 @@ def fallback_to_tile_method(center_lat, center_lng):
     ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
     
     # Calculate pixel offset within the tile
-    lat_rad = math.radians(center_lat)
-    n = 2.0 ** zoom_level
     x_pixel = int((center_lng + 180.0) / 360.0 * n * tile_size) % tile_size
     y_pixel = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * tile_size) % tile_size
     
-    # Calculate the 224x224 pixel area bounds
-    patch_size = 112  # Half of 224 pixels
-    start_x = max(0, x_pixel - patch_size)
-    end_x = min(tile_size, x_pixel + patch_size)
-    start_y = max(0, y_pixel - patch_size)
-    end_y = min(tile_size, y_pixel + patch_size)
-    
     try:
-        # Construct ESRI satellite tile URL
-        tile_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom_level}/{ytile}/{xtile}"
-        
-        # Download the tile
         import requests
         from PIL import Image, ImageDraw
         import io
         
-        response = requests.get(tile_url)
-        if response.status_code == 200:
-            # Open the tile image
-            tile_img = Image.open(io.BytesIO(response.content))
-            
-            # Crop the 224x224 pixel area
-            patch_img = tile_img.crop((start_x, start_y, end_x, end_y))
-            
-            # Resize to exactly 224x224 if needed
-            if patch_img.size != (224, 224):
-                patch_img = patch_img.resize((224, 224), Image.Resampling.LANCZOS)
-            
-            # Display the patch image
-            caption = f"224x224 Pixel Patch at {center_lat:.4f}°, {center_lng:.4f}° (Base satellite only)"
-            st.image(patch_img, caption=caption, use_container_width=False)
-            
-            # Add download button for the patch
-            img_buffer = io.BytesIO()
-            patch_img.save(img_buffer, format='PNG')
-            img_data = img_buffer.getvalue()
-            
-            st.download_button(
-                label="📥 Download Patch PNG",
-                data=img_data,
-                file_name=f"patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
-                mime="image/png"
-            )
-            
-            st.warning("⚠️ **Fallback mode:** Base satellite imagery only - overlays not included")
-        else:
-            st.error("Failed to download map tile")
-            
+        # Calculate which tiles we need to download
+        # We need enough tiles to cover a 224x224 pixel area
+        tiles_needed_x = 2  # We'll need 2 tiles horizontally
+        tiles_needed_y = 2  # We'll need 2 tiles vertically
+        
+        # Create a larger canvas to stitch tiles together
+        canvas_width = tile_size * tiles_needed_x
+        canvas_height = tile_size * tiles_needed_y
+        canvas = Image.new('RGB', (canvas_width, canvas_height))
+        
+        # Download and stitch tiles
+        for i in range(tiles_needed_x):
+            for j in range(tiles_needed_y):
+                # Calculate tile coordinates
+                current_xtile = xtile + i - 1  # -1 to get tiles to the left
+                current_ytile = ytile + j - 1  # -1 to get tiles above
+                
+                # Construct ESRI satellite tile URL
+                tile_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom_level}/{current_ytile}/{current_xtile}"
+                
+                try:
+                    response = requests.get(tile_url, timeout=10)
+                    if response.status_code == 200:
+                        # Open the tile image
+                        tile_img = Image.open(io.BytesIO(response.content))
+                        
+                        # Paste tile onto canvas
+                        paste_x = i * tile_size
+                        paste_y = j * tile_size
+                        canvas.paste(tile_img, (paste_x, paste_y))
+                    else:
+                        st.warning(f"Failed to download tile {current_xtile},{current_ytile}")
+                        
+                except Exception as e:
+                    st.warning(f"Error downloading tile {current_xtile},{current_ytile}: {e}")
+        
+        # Calculate the center pixel in the canvas
+        center_x = tile_size + x_pixel  # Center tile + offset
+        center_y = tile_size + y_pixel  # Center tile + offset
+        
+        # Crop the 224x224 pixel area from the center
+        patch_size = 112  # Half of 224 pixels
+        start_x = max(0, center_x - patch_size)
+        end_x = min(canvas_width, center_x + patch_size)
+        start_y = max(0, center_y - patch_size)
+        end_y = min(canvas_height, center_y + patch_size)
+        
+        # Crop the patch
+        patch_img = canvas.crop((start_x, start_y, end_x, end_y))
+        
+        # Resize to exactly 224x224 if needed
+        if patch_img.size != (224, 224):
+            patch_img = patch_img.resize((224, 224), Image.Resampling.LANCZOS)
+        
+        # Display the patch image
+        caption = f"224x224 Pixel Patch at {center_lat:.4f}°, {center_lng:.4f}° (Base satellite only)"
+        st.image(patch_img, caption=caption, use_container_width=False)
+        
+        # Add download button for the patch
+        img_buffer = io.BytesIO()
+        patch_img.save(img_buffer, format='PNG')
+        img_data = img_buffer.getvalue()
+        
+        st.download_button(
+            label="📥 Download Patch PNG",
+            data=img_data,
+            file_name=f"patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+            mime="image/png"
+        )
+        
+        st.warning("⚠️ **Fallback mode:** Base satellite imagery only - overlays not included")
+        st.info("💡 **Tip:** This method captures a larger area and crops to 224x224 for better accuracy")
+        
     except Exception as e:
-        st.error(f"Error in fallback method: {e}")
+        st.error(f"Error in improved fallback method: {e}")
         # Final fallback to placeholder
         st.markdown("""
         <div style="padding: 15px; text-align: center;">

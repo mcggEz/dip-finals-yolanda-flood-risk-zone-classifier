@@ -1,0 +1,13 @@
+{
+  "image_path": "temp_patch.png",
+  "predicted_class": "SafeZone_UrbanCore",
+  "confidence": 0.16734625109036008,
+  "probabilities": {
+    "HighRisk_Coastal": 0.16613230585751235,
+    "ModerateRisk_Upland": 0.16632997079665565,
+    "SafeZone_UrbanCore": 0.16734625109036008,
+    "EvacCenter_Active": 0.16702479772185086,
+    "WarningGap_Barangay": 0.167221278822676,
+    "BufferZone_Proposed": 0.165945395710945
+  }
+}

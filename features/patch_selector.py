@@ -202,14 +202,12 @@ def create_patch_map():
             fill=True,
             fillColor='red',
             fillOpacity=0.6,
-            weight=2,
-            popup=f"<b>{patch['name']}</b><br>Click to select this patch"
+            weight=2
         ).add_to(m)
         
         # Add clickable marker
         folium.Marker(
             location=patch['coords'],
-            popup=f"<b>{patch['name']}</b><br>Class: {patch['class']}<br>Hazard: {patch['hazard_score']:.2f}",
             icon=folium.Icon(color='red', icon='info-sign')
         ).add_to(m)
     
