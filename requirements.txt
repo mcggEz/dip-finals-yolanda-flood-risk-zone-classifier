@@ -2,4 +2,11 @@ streamlit
 streamlit-folium
 folium 
 geopandas
-matplotlib 
+matplotlib
+scikit-learn
+seaborn
+pandas
+numpy
+Pillow
+opencv-python
+shapely 

@@ -1,7 +1,6 @@
 import streamlit as st
 from features.overlays import show_overlays, render_overlay_main_content
 from features.patch_selector import show_patch_selector
-from features.metadata_viewer import show_metadata_viewer
 from features.batch_analysis import show_batch_analysis
 
 # Set page config
@@ -73,14 +72,13 @@ with st.sidebar:
         unsafe_allow_html=True
     )
     
-    with st.expander("🗺️ Overlays, Markers and Zones - View and toggle map overlays, shelter markers, and buffer zones for risk visualization.", expanded=True):
-        show_buffer, show_hazard, show_evac = show_overlays()
+    # Overlay controls
+    show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity = show_overlays()
 
+    # Patch Selector
     with st.expander("🧩 Patch Selectors - Select or upload a patch for classification and risk analysis.", expanded=False):
         show_patch_selector()
 
-    with st.expander("📋 Metadata Viewer - View detailed metadata for the selected patch, including hazard score and location info.", expanded=False):
-        show_metadata_viewer()
 
     with st.expander("📊 Batch Analysis - Upload and analyze multiple patches at once, view heatmaps, and export results.", expanded=False):
         show_batch_analysis()
@@ -103,7 +101,7 @@ with st.sidebar:
     )
 
 # Main content
-render_overlay_main_content(show_buffer, show_hazard, show_evac)
+render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity)
 
 
 
