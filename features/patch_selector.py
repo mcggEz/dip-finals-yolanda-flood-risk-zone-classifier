@@ -9,35 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
-def extract_coordinates_from_png_metadata(image_path):
-    """
-    Extract center_lat and center_lon from PNG metadata
-    Returns (latitude, longitude) or (None, None) if not found
-    """
-    try:
-        with Image.open(image_path) as img:
-            # Get PNG metadata
-            if hasattr(img, 'info') and img.info:
-                center_lat = img.info.get('center_lat')
-                center_lon = img.info.get('center_lon')
-                
-                if center_lat is not None and center_lon is not None:
-                    return float(center_lat), float(center_lon)
-            
-            # If no metadata, try to extract from filename (fallback)
-            filename = os.path.basename(image_path)
-            if '_' in filename and filename.replace('.', '_').count('_') >= 2:
-                try:
-                    parts = filename.replace('.png', '').split('_')
-                    if len(parts) >= 3:
-                        return float(parts[1]), float(parts[2])
-                except:
-                    pass
-            
-            return None, None
-    except Exception as e:
-        print(f"Error extracting coordinates from {image_path}: {e}")
-        return None, None
+
 
 def show_patch_selector():
     """Main patch selector UI component"""
@@ -57,6 +29,8 @@ def show_patch_selector():
         """,
         unsafe_allow_html=True
     )
+    
+
     # Dropdown for patch collections
     # File uploader for manual uploads
     uploaded_files = st.file_uploader(
@@ -159,23 +133,9 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
             predicted_class = "SafeZone_UrbanCore"
             confidence = 0.85
         
-        # Extract coordinates from PNG metadata
-        latitude, longitude = extract_coordinates_from_png_metadata(image_path)
-        
-        # If coordinates not found in metadata, use fallback coordinates
-        if latitude is None or longitude is None:
-            st.warning(f"⚠️ No coordinates found in metadata for {actual_filename}, using fallback coordinates")
-            latitude = 10.6487
-            longitude = 122.9789
-        
-        # Calculate actual shelter proximity using evacuation centers CSV
-        try:
-            from features.overlays import get_nearest_shelter_distance
-            shelter_proximity, nearest_center = get_nearest_shelter_distance(latitude, longitude)
-        except Exception as e:
-            st.warning(f"Shelter proximity calculation failed: {str(e)}")
-            shelter_proximity = 3.5  # Fallback to mock data
-            nearest_center = "Unknown"
+        # Use fallback coordinates for file uploads
+        latitude = 10.6487
+        longitude = 122.9789
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -196,8 +156,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
         'HazardScore': [f"{hazard_score:.2f}"],
         'Latitude': [f"{latitude:.4f}"],
         'Longitude': [f"{longitude:.4f}"],
-        'ShelterProximity': [f"{shelter_proximity:.2f}"],
-        'NearestShelter': [nearest_center],
         'Timestamp': [f"{date_part}<br>{time_part}"],
         'RiskClass': [predicted_class]
     }
@@ -211,8 +169,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
                 <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">HazardScore</th>
                 <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Latitude</th>
                 <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Longitude</th>
-                <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">ShelterProximity</th>
-                <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">NearestShelter</th>
                 <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Timestamp</th>
                 <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">RiskClass</th>
             </tr>
@@ -223,8 +179,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
                 <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['HazardScore'][0]}</td>
                 <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['Latitude'][0]}</td>
                 <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['Longitude'][0]}</td>
-                <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['ShelterProximity'][0]}</td>
-                <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['NearestShelter'][0]}</td>
                 <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{date_part}<br>{time_part}</td>
                 <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['RiskClass'][0]}</td>
             </tr>
@@ -240,8 +194,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
             st.write(f"   📍 Predicted Class: {predicted_class}")
             st.write(f"   🎯 Confidence: {confidence:.1%}")
             st.write(f"   🚨 Hazard Score: {hazard_score:.3f}")
-            st.write(f"   🏠 Nearest Shelter: {nearest_center}")
-            st.write(f"   📏 Distance: {shelter_proximity:.2f} km")
             
             # Add confidence warning
             if confidence < 0.5:
@@ -260,8 +212,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
         'HazardScore': f"{hazard_score:.2f}",
         'Latitude': f"{latitude:.4f}",
         'Longitude': f"{longitude:.4f}",
-        'ShelterProximity': f"{shelter_proximity:.2f}",
-        'NearestShelter': nearest_center,
         'Timestamp': f"{date_part}<br>{time_part}",
         'RiskClass': predicted_class
     }]
@@ -383,23 +333,9 @@ def display_batch_metadata_and_export(uploaded_files):
                     hazard_score = 0.16
                     predicted_class = "SafeZone_UrbanCore"
                 
-                # Extract coordinates from PNG metadata
-                latitude, longitude = extract_coordinates_from_png_metadata(temp_path)
-                
-                # If coordinates not found in metadata, use fallback coordinates
-                if latitude is None or longitude is None:
-                    st.warning(f"⚠️ No coordinates found in metadata for {uploaded_file.name}, using fallback coordinates")
-                    latitude = 10.6487 + (i * 0.01)
-                    longitude = 122.9789 + (i * 0.01)
-                
-                # Calculate actual shelter proximity using evacuation centers CSV
-                try:
-                    from features.overlays import get_nearest_shelter_distance
-                    shelter_proximity, nearest_center = get_nearest_shelter_distance(latitude, longitude)
-                except Exception as e:
-                    st.warning(f"Shelter proximity calculation failed for {uploaded_file.name}: {str(e)}")
-                    shelter_proximity = 3.5 + (i * 0.1)  # Fallback to mock data
-                    nearest_center = "Unknown"
+                # Use fallback coordinates for file uploads
+                latitude = 10.6487 + (i * 0.01)
+                longitude = 122.9789 + (i * 0.01)
                 
                 # Add to batch data
                 batch_data.append({
@@ -407,8 +343,6 @@ def display_batch_metadata_and_export(uploaded_files):
                     'HazardScore': f"{hazard_score:.2f}",
                     'Latitude': f"{latitude:.4f}",
                     'Longitude': f"{longitude:.4f}",
-                    'ShelterProximity': f"{shelter_proximity:.2f}",
-                    'NearestShelter': nearest_center,
                     'Timestamp': f"{date_part}<br>{time_part}",
                     'RiskClass': predicted_class
                 })
@@ -436,8 +370,6 @@ def display_batch_metadata_and_export(uploaded_files):
                 'Hazard_Score': float(data['HazardScore']),
                 'Latitude': float(data['Latitude']),
                 'Longitude': float(data['Longitude']),
-                'Shelter_Proximity_km': float(data['ShelterProximity']),
-                'Nearest_Shelter': data.get('NearestShelter', 'Unknown'),
                 'Risk_Class': data['RiskClass'],
                 'Timestamp': timestamp
             })
