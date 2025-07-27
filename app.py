@@ -1,6 +1,26 @@
 import streamlit as st
-from features.overlays import show_overlays, render_overlay_main_content
-from features.patch_selector import show_patch_selector, display_metadata_and_export, display_batch_metadata_and_export
+try:
+    from features.overlays import show_overlays, render_overlay_main_content
+except ImportError as e:
+    st.error(f"Import error for overlays: {e}")
+    st.error("Please check that all required functions are properly defined in features/overlays.py")
+    # Define fallback functions
+    def show_overlays():
+        return [False] * 9  # Return 9 False values for all overlay options
+    def render_overlay_main_content(*args, **kwargs):
+        st.error("Overlay rendering not available")
+try:
+    from features.patch_selector import show_patch_selector, display_metadata_and_export, display_batch_metadata_and_export
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.error("Please check that all required functions are properly defined in features/patch_selector.py")
+    # Define fallback functions
+    def show_patch_selector():
+        st.error("Patch selector not available")
+    def display_metadata_and_export(*args, **kwargs):
+        st.error("Metadata display not available")
+    def display_batch_metadata_and_export(*args, **kwargs):
+        st.error("Batch metadata display not available")
 
 
 # Set page config
@@ -96,7 +116,13 @@ with st.sidebar:
     )
 
 # Main content
-render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary)
+try:
+    render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary)
+except Exception as e:
+    st.error(f"Error rendering main content: {e}")
+    st.error("Please check the console for more details")
+    import traceback
+    st.code(traceback.format_exc())
 
 # ---- Patch Analysis Results in Main Content ----
 if (

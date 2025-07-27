@@ -1177,7 +1177,7 @@ def generate_patch_metadata(center_lat, center_lng, patch_bounds):
         
         # Show Random Forest prediction details
         if 'confidence' in locals():
-            st.info(f"🤖 **Random Forest Model Results:**")
+            
             st.write(f"   📍 Predicted Class: {risk_class}")
             st.write(f"   🎯 Confidence: {confidence:.1%}")
             st.write(f"   🚨 Hazard Score: {hazard_score:.3f}")
