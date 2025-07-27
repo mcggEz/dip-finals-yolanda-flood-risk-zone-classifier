@@ -1,7 +1,7 @@
 import streamlit as st
 from features.overlays import show_overlays, render_overlay_main_content
-from features.patch_selector import show_patch_selector
-from features.batch_analysis import show_batch_analysis
+from features.patch_selector import show_patch_selector, display_metadata_and_export, display_batch_metadata_and_export
+
 
 # Set page config
 st.set_page_config(page_title="Yolanda Risk Zone Classifier", layout="wide")
@@ -73,15 +73,10 @@ with st.sidebar:
     )
     
     # Overlay controls
-    show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity = show_overlays()
+    show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary = show_overlays()
 
     # Patch Selector
-    with st.expander("🧩 Patch Selectors - Select or upload a patch for classification and risk analysis.", expanded=False):
-        show_patch_selector()
-
-
-    with st.expander("📊 Batch Analysis - Upload and analyze multiple patches at once, view heatmaps, and export results.", expanded=False):
-        show_batch_analysis()
+    show_patch_selector()
 
     # Note and Members
     st.markdown(
@@ -101,7 +96,28 @@ with st.sidebar:
     )
 
 # Main content
-render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity)
+render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary)
+
+# ---- Patch Analysis Results in Main Content ----
+if (
+    'patch_uploaded_files' in st.session_state and
+    st.session_state['patch_uploaded_files'] and
+    'patch_analysis_trigger' in st.session_state and
+    st.session_state['patch_analysis_trigger']
+):
+    uploaded_files = st.session_state['patch_uploaded_files']
+    trigger = st.session_state['patch_analysis_trigger']
+    st.markdown("---")
+    st.markdown("## 🖼️ Patch Analysis Results")
+    if trigger == 'single' and len(uploaded_files) == 1:
+        uploaded_file = uploaded_files[0]
+        # Show preview
+        from PIL import Image
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Patch", use_container_width=True)
+        display_metadata_and_export(uploaded_file.name, "uploaded_file")
+    elif trigger == 'batch' and len(uploaded_files) > 1:
+        display_batch_metadata_and_export(uploaded_files)
 
 
 

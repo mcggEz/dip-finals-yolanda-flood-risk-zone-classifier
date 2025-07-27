@@ -1,24 +1,171 @@
-LAT,LONG,NAME_1,REGION,Evac_Cntrs
-10.82,122.61,Iloilo,Western Visayas (Region VI),2
-11.04,124.96,Leyte,Eastern Visayas (Region VIII),18
-10.27,125.18,Southern Leyte,Eastern Visayas (Region VIII),2
-10.06,125.16,Southern Leyte,Eastern Visayas (Region VIII),42
-11.06,125.04,Leyte,Eastern Visayas (Region VIII),29
-11.16,125.52,Eastern Samar,Eastern Visayas (Region VIII),1
-10.28,125.18,Southern Leyte,Eastern Visayas (Region VIII),29
-11.14,124.89,Leyte,Eastern Visayas (Region VIII),4
-10.78,122.55,Iloilo,Western Visayas (Region VI),16
-10.37,124.75,Leyte,Eastern Visayas (Region VIII),13
-10.04,125.02,Southern Leyte,Eastern Visayas (Region VIII),38
-11.24,125.00,Leyte,Eastern Visayas (Region VIII),29
-11.16,124.99,Leyte,Eastern Visayas (Region VIII),3
-11.03,125.72,Eastern Samar,Eastern Visayas (Region VIII),4
-11.62,125.02,Samar,Eastern Visayas (Region VIII),60
-11.29,124.64,Leyte,Eastern Visayas (Region VIII),1
-11.14,125.30,Eastern Samar,Eastern Visayas (Region VIII),4
-11.30,124.68,Leyte,Eastern Visayas (Region VIII),2
-11.52,122.69,Capiz,Western Visayas (Region VI),1
-11.19,124.78,Leyte,Eastern Visayas (Region VIII),1
-10.33,125.08,Southern Leyte,Eastern Visayas (Region VIII),29
-11.04,122.85,Iloilo,Western Visayas (Region VI),1
-11.76,124.95,Samar,Eastern Visayas (Region VIII),7
+Name,LAT,LONG
+Evacuation Center 1,11.04,124.96
+Evacuation Center 2,10.27,125.18
+Evacuation Center 3,10.06,125.16
+Evacuation Center 4,11.06,125.04
+Evacuation Center 5,11.16,125.52
+Evacuation Center 6,10.28,125.18
+Evacuation Center 7,11.14,124.89
+Evacuation Center 8,10.78,122.55
+Evacuation Center 9,10.37,124.75
+Evacuation Center 10,10.04,125.02
+Evacuation Center 11,11.24,125.00
+Evacuation Center 12,11.16,124.99
+Evacuation Center 13,11.03,125.72
+Evacuation Center 14,11.62,125.02
+Evacuation Center 15,11.29,124.64
+Evacuation Center 16,11.14,125.30
+Evacuation Center 17,11.30,124.68
+Evacuation Center 18,11.52,122.69
+Evacuation Center 19,11.19,124.78
+Evacuation Center 20,10.33,125.08
+Evacuation Center 21,11.04,122.85
+Evacuation Center 22,11.76,124.95
+Evacuation Center 23,12.00,125.45
+Evacuation Center 24,10.16,125.13
+Evacuation Center 25,10.97,124.96
+Evacuation Center 26,10.79,122.59
+Evacuation Center 27,11.14,124.84
+Evacuation Center 28,11.21,124.85
+Evacuation Center 29,11.15,125.67
+Evacuation Center 30,12.45,124.31
+Evacuation Center 31,10.89,122.70
+Evacuation Center 32,11.28,125.07
+Evacuation Center 33,11.89,120.02
+Evacuation Center 34,12.00,120.20
+Evacuation Center 35,10.43,121.93
+Evacuation Center 36,10.74,121.94
+Evacuation Center 37,10.52,121.95
+Evacuation Center 38,10.51,122.53
+Evacuation Center 39,11.72,122.09
+Evacuation Center 40,11.93,121.55
+Evacuation Center 41,10.50,122.66
+Evacuation Center 42,10.37,122.87
+Evacuation Center 43,10.19,122.86
+Evacuation Center 44,10.91,121.99
+Evacuation Center 45,10.84,122.08
+Evacuation Center 46,11.59,122.09
+Evacuation Center 47,10.84,121.96
+Evacuation Center 48,10.64,122.24
+Evacuation Center 49,10.66,122.32
+Evacuation Center 50,10.95,122.51
+Evacuation Center 51,10.88,122.60
+Evacuation Center 52,10.99,122.54
+Evacuation Center 53,10.82,122.71
+Evacuation Center 54,10.94,122.64
+Evacuation Center 55,11.43,122.93
+Evacuation Center 56,11.48,122.83
+Evacuation Center 57,11.49,123.00
+Evacuation Center 58,11.39,122.69
+Evacuation Center 59,11.34,122.67
+Evacuation Center 60,11.42,122.67
+Evacuation Center 61,10.59,123.48
+Evacuation Center 62,10.82,122.43
+Evacuation Center 63,11.07,122.66
+Evacuation Center 64,11.12,122.54
+Evacuation Center 65,10.98,124.89
+Evacuation Center 66,12.68,124.36
+Evacuation Center 67,11.71,122.36
+Evacuation Center 68,11.82,122.16
+Evacuation Center 69,9.86,123.14
+Evacuation Center 70,11.13,123.96
+Evacuation Center 71,11.91,124.29
+Evacuation Center 72,11.25,124.00
+Evacuation Center 73,11.06,124.41
+Evacuation Center 74,11.15,124.47
+Evacuation Center 75,14.36,121.48
+Evacuation Center 76,14.43,121.43
+Evacuation Center 77,9.57,123.31
+Evacuation Center 78,11.62,124.38
+Evacuation Center 79,11.56,124.40
+Evacuation Center 80,10.38,123.96
+Evacuation Center 81,11.31,124.37
+Evacuation Center 82,10.36,124.97
+Evacuation Center 83,12.56,124.93
+Evacuation Center 84,12.57,125.01
+Evacuation Center 85,11.56,122.79
+Evacuation Center 86,10.89,122.44
+Evacuation Center 87,10.54,122.84
+Evacuation Center 88,11.03,124.00
+Evacuation Center 89,11.60,125.36
+Evacuation Center 90,10.20,124.85
+Evacuation Center 91,9.31,123.31
+Evacuation Center 92,10.70,122.63
+Evacuation Center 93,10.59,122.14
+Evacuation Center 94,10.79,122.02
+Evacuation Center 95,9.60,122.47
+Evacuation Center 96,11.54,122.49
+Evacuation Center 97,11.64,122.31
+Evacuation Center 98,11.11,125.21
+Evacuation Center 99,10.16,125.00
+Evacuation Center 100,11.12,125.45
+Evacuation Center 101,12.53,125.12
+Evacuation Center 102,10.30,125.06
+Evacuation Center 103,10.82,122.53
+Evacuation Center 104,10.89,124.96
+Evacuation Center 105,11.75,125.46
+Evacuation Center 106,10.25,124.98
+Evacuation Center 107,11.90,125.42
+Evacuation Center 108,11.06,122.48
+Evacuation Center 109,11.30,123.73
+Evacuation Center 110,11.43,122.06
+Evacuation Center 111,10.73,123.83
+Evacuation Center 112,11.57,124.58
+Evacuation Center 113,11.65,124.50
+Evacuation Center 114,10.81,124.57
+Evacuation Center 115,11.45,124.94
+Evacuation Center 116,11.42,124.84
+Evacuation Center 117,11.46,123.15
+Evacuation Center 118,11.57,123.13
+Evacuation Center 119,10.02,123.62
+Evacuation Center 120,12.53,124.33
+Evacuation Center 121,12.50,124.64
+Evacuation Center 122,10.83,125.00
+Evacuation Center 123,10.79,124.94
+Evacuation Center 124,12.52,124.56
+Evacuation Center 125,9.91,125.28
+Evacuation Center 126,9.94,125.25
+Evacuation Center 127,10.53,125.16
+Evacuation Center 128,10.60,124.96
+Evacuation Center 129,11.47,124.57
+Evacuation Center 130,13.83,120.63
+Evacuation Center 131,10.96,123.31
+Evacuation Center 132,14.34,121.08
+Evacuation Center 133,12.21,119.89
+Evacuation Center 134,10.08,124.94
+Evacuation Center 135,10.90,125.00
+Evacuation Center 136,11.50,125.50
+Evacuation Center 137,10.52,122.80
+Evacuation Center 138,11.32,124.74
+Evacuation Center 139,10.70,122.56
+Evacuation Center 140,11.18,122.83
+Evacuation Center 141,11.23,122.93
+Evacuation Center 142,11.22,123.11
+Evacuation Center 143,11.17,123.02
+Evacuation Center 144,11.27,123.10
+Evacuation Center 145,11.14,122.04
+Evacuation Center 146,11.04,122.07
+Evacuation Center 147,14.20,121.43
+Evacuation Center 148,11.15,123.81
+Evacuation Center 149,11.17,123.72
+Evacuation Center 150,11.37,124.49
+Evacuation Center 151,11.78,124.35
+Evacuation Center 152,11.68,124.36
+Evacuation Center 153,11.08,123.94
+Evacuation Center 154,12.36,125.24
+Evacuation Center 155,12.35,125.13
+Evacuation Center 156,12.41,125.05
+Evacuation Center 157,10.35,125.25
+Evacuation Center 158,10.40,125.20
+Evacuation Center 159,10.47,125.19
+Evacuation Center 160,10.36,125.58
+Evacuation Center 161,10.94,124.03
+Evacuation Center 162,10.84,124.03
+Evacuation Center 163,10.92,124.69
+Evacuation Center 164,11.57,124.93
+Evacuation Center 165,11.61,124.99
+Evacuation Center 166,12.14,125.44
+Evacuation Center 167,11.47,124.47
+Evacuation Center 168,11.59,122.75
+Evacuation Center 169,10.70,123.08
+Evacuation Center 170,10.30,123.82

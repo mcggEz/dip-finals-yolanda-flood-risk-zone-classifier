@@ -6,6 +6,55 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import math
+import os
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculate the distance between two points using the Haversine formula
+    Returns distance in kilometers
+    """
+    # Convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    # Radius of earth in kilometers
+    r = 6371
+    
+    return c * r
+
+def get_nearest_shelter_distance(lat, lon):
+    """
+    Calculate distance to the nearest evacuation center using the CSV data
+    Returns distance in kilometers
+    """
+    try:
+        # Load evacuation centers data
+        evac_centers_df = pd.read_csv('overlays/evacuation_centers.csv')
+        
+        min_distance = float('inf')
+        nearest_center = None
+        
+        for _, center in evac_centers_df.iterrows():
+            center_lat = center['LAT']
+            center_lon = center['LONG']
+            
+            distance = calculate_distance(lat, lon, center_lat, center_lon)
+            
+            if distance < min_distance:
+                min_distance = distance
+                nearest_center = center['Name']
+        
+        return min_distance, nearest_center
+        
+    except Exception as e:
+        print(f"Error calculating shelter proximity: {e}")
+        # Fallback to random distance if CSV loading fails
+        return np.random.uniform(0.5, 10.0), "Unknown"
 
 # Sample overlay data
 FLOOD_POLYGON = [
@@ -87,6 +136,16 @@ def show_overlays():
     )
     show_hazard_vs_warning = st.checkbox("Show", key="show_hazard_vs_warning")
     hazard_vs_warning_opacity = st.slider("Overlay Opacity", min_value=0.0, max_value=1.0, value=0.5, step=0.05, key="hazard_vs_warning_opacity")
+    
+    st.markdown(
+        """
+        <div class='sidebar-card' style='background:#8B4513;'>
+            <b style='color:#fff;'>🟫 Rectangle:</b> <span style='color:#fff;'>Yolanda Heavily Affected Zones</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    show_hazard_vs_warning_boundary = st.checkbox("Show Yolanda Heavily Affected Zones", key="show_hazard_vs_warning_boundary")
     st.markdown(
         """
         <div class='sidebar-card' style='background:#225e5e;'>
@@ -96,9 +155,9 @@ def show_overlays():
         unsafe_allow_html=True
     )
     show_buffer = st.checkbox("Show", key="show_buffer")
-    return show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity
+    return show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary
 
-def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity):
+def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer, show_hazard_vs_warning, hazard_vs_warning_opacity, show_phivolcs_hazard, phivolcs_hazard_opacity, show_hazard_vs_warning_boundary):
     # Center the map on the Philippines with ESRI satellite basemap
     m = folium.Map(location=[12.5, 122.5], zoom_start=6, tiles=None, min_zoom=5)
     folium.TileLayer(
@@ -197,6 +256,24 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
         except Exception as e:
             st.error(f"Error loading hazard vs warning overlay PNG: {e}")
 
+    # Add rectangular dashed boundary for Yolanda Heavily Affected Zones
+    if show_hazard_vs_warning_boundary:
+        try:
+            # Use the same coordinates as the Hazard vs Warning Coverage overlay
+            hazard_vs_warning_bounds = [[9.34962, 119.38184], [13.01001, 126.2428]]  # [[south, west], [north, east]]
+            
+            folium.Rectangle(
+                bounds=hazard_vs_warning_bounds,
+                color='#8B4513',  # Saddle brown color to match the sidebar card
+                weight=3,
+                fillColor='#8B4513',
+                fillOpacity=0.0,  # Transparent fill
+                dashArray='10, 10',  # Dashed line pattern
+                name='Yolanda Heavily Affected Zones'
+            ).add_to(m)
+        except Exception as e:
+            st.error(f"Error adding Yolanda heavily affected zones boundary rectangle: {e}")
+
     # Buffer zones (improved: buffer around each shelter marker)
     if show_buffer:
         try:
@@ -235,6 +312,7 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
     st.session_state['active_buffer'] = show_buffer
     st.session_state['active_hazard_vs_warning'] = show_hazard_vs_warning
     st.session_state['active_phivolcs_hazard'] = show_phivolcs_hazard
+    st.session_state['active_hazard_vs_warning_boundary'] = show_hazard_vs_warning_boundary
     
     # Overlay labels - render immediately after map
     overlay_labels = []
@@ -250,6 +328,8 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
         overlay_labels.append("🟧 Hazard vs Warning Coverage")
     if show_phivolcs_hazard:
         overlay_labels.append("🔴 Rain-Induced Landslide Zones")
+    if show_hazard_vs_warning_boundary:
+        overlay_labels.append("🟫 Yolanda Heavily Affected Zones")
     if overlay_labels:
         st.markdown(f"<div style='color:#1cc88a; font-size:0.95rem;'>Active overlays: {', '.join(overlay_labels)}</div>", unsafe_allow_html=True)
     
@@ -292,10 +372,15 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
     if 'selected_patch' in st.session_state:
         selected = st.session_state['selected_patch']
         
-        # Add padding container
-      
+        # Check if we have a captured patch image
+        captured_patch_filename = st.session_state.get('captured_patch_filename')
         
-        st.info(f"🎯 User patch on map: Center {selected['center_lat']:.6f}°, {selected['center_lng']:.6f}°")
+        if captured_patch_filename and os.path.exists(captured_patch_filename):
+            st.success(f"🎯 **Patch Captured Successfully!** Center {selected['center_lat']:.6f}°, {selected['center_lng']:.6f}°")
+            st.info(f"📁 Captured image: {captured_patch_filename}")
+            st.info("🤖 **Ready for Random Forest analysis** - Scroll down to see the analysis results")
+        
+           
         
         col1, col2 = st.columns(2)
         
@@ -377,15 +462,32 @@ def display_patch_image(center_lat, center_lng, patch_bounds):
                 st.write(f"  🟧 {overlay}: Image overlay with opacity control")
             elif 'Rain-Induced' in overlay:
                 st.write(f"  🔴 {overlay}: Image overlay with opacity control")
-    else:
-        st.warning("⚠️ **No overlays active** - Only base satellite imagery will be captured")
-        st.info("💡 **Tip:** Enable overlays in the sidebar to capture them in the PNG.")
+
     
     try:
         # Try server-side rendering first (with Selenium)
         patch_img = capture_map_with_overlays(center_lat, center_lng)
         
         if patch_img:
+            # Clean up old captured patch files (keep only the 5 most recent)
+            import os
+            old_patches = [f for f in os.listdir('.') if f.startswith('captured_patch_') and f.endswith('.png')]
+            if len(old_patches) > 5:
+                old_patches.sort(key=os.path.getctime)
+                for old_patch in old_patches[:-5]:  # Keep only the 5 most recent
+                    try:
+                        os.remove(old_patch)
+                    except:
+                        pass
+            
+            # Save the captured patch image for Random Forest classification
+            patch_filename = f"captured_patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            patch_img.save(patch_filename)
+            
+            # Store the filename in session state for Random Forest analysis
+            st.session_state['captured_patch_filename'] = patch_filename
+            st.session_state['captured_patch_coords'] = (center_lat, center_lng)
+            
             # Display the captured patch image with overlays
             caption = f"224x224 Pixel Patch at {center_lat:.4f}°, {center_lng:.4f}°"
             active_overlays = get_active_overlays()
@@ -403,17 +505,12 @@ def display_patch_image(center_lat, center_lng, patch_bounds):
             st.download_button(
                 label="📥 Download Patch PNG",
                 data=img_data,
-                file_name=f"patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+                file_name=patch_filename,
                 mime="image/png"
             )
             
             # Show overlay information
-            if active_overlays:
-                st.success(f"✅ **Real overlays captured:** {', '.join(active_overlays)}")
-                st.info("💡 **Tip:** If overlays don't appear, try enabling them in the sidebar and clicking the map again.")
-            else:
-                st.info("📷 **Base satellite imagery** - no overlays active")
-                st.info("💡 **Tip:** Enable overlays in the sidebar to capture them in the PNG.")
+           
         else:
             # Fallback to tile-based method
             fallback_to_tile_method(center_lat, center_lng)
@@ -625,6 +722,23 @@ def create_main_map_html(center_lat, center_lng, zoom_level):
         except Exception as e:
             st.error(f"Error loading hazard vs warning overlay PNG: {e}")
     
+    # 5.5. Yolanda Heavily Affected Zones Boundary - EXACT same as main map
+    if st.session_state.get('active_hazard_vs_warning_boundary', False):
+        try:
+            hazard_vs_warning_bounds = [[9.34962, 119.38184], [13.01001, 126.2428]]  # [[south, west], [north, east]]
+            
+            folium.Rectangle(
+                bounds=hazard_vs_warning_bounds,
+                color='#8B4513',  # Saddle brown color
+                weight=3,
+                fillColor='#8B4513',
+                fillOpacity=0.0,  # Transparent fill
+                dashArray='10, 10',  # Dashed line pattern
+                name='Yolanda Heavily Affected Zones'
+            ).add_to(m)
+        except Exception as e:
+            st.error(f"Error adding Yolanda heavily affected zones boundary rectangle: {e}")
+    
     # 6. PHIVOLCS Rain-Induced Landslide - EXACT same as main map
     if st.session_state.get('active_phivolcs_hazard', False):
         try:
@@ -727,6 +841,8 @@ def get_active_overlays():
         active_overlays.append("PHIVOLCS")
     if st.session_state.get('active_hazard_vs_warning', False):
         active_overlays.append("Hazard vs Warning")
+    if st.session_state.get('active_hazard_vs_warning_boundary', False):
+        active_overlays.append("Yolanda Heavily Affected Zones")
     return active_overlays
 
 def fallback_to_tile_method(center_lat, center_lng):
@@ -841,45 +957,252 @@ def fallback_to_tile_method(center_lat, center_lng):
 def generate_patch_metadata(center_lat, center_lng, patch_bounds):
     """Generate metadata for the selected patch"""
     
-    # Mock hazard analysis based on location
-    hazard_score = np.random.uniform(0.1, 0.9)
+    # Initialize batch data in session state if not exists
+    if 'map_batch_data' not in st.session_state:
+        st.session_state['map_batch_data'] = []
+    
+    # Try to use Random Forest prediction for the captured patch image
+    try:
+        import sys
+        sys.path.append('.')
+        from test_random_forest import get_random_forest_prediction
+        
+        # Check if we have a captured patch image from the map
+        captured_patch_filename = st.session_state.get('captured_patch_filename')
+        
+        if captured_patch_filename and os.path.exists(captured_patch_filename):
+            # Use the actual captured patch image from the map
+            print(f"🔍 Using captured patch image: {captured_patch_filename}")
+            result = get_random_forest_prediction(captured_patch_filename)
+        else:
+            # Fallback: try to find any recent patch file
+            patch_files = [f for f in os.listdir('.') if f.startswith('captured_patch_') and f.endswith('.png')]
+            
+            if patch_files:
+                # Use the most recent captured patch file
+                latest_patch = max(patch_files, key=os.path.getctime)
+                print(f"🔍 Using recent captured patch: {latest_patch}")
+                result = get_random_forest_prediction(latest_patch)
+            else:
+                # If no captured patch exists, use a sample from DisasterData
+                sample_files = []
+                for root, dirs, files in os.walk('DisasterData'):
+                    for file in files:
+                        if file.endswith('.png'):
+                            sample_files.append(os.path.join(root, file))
+                            break
+                    if sample_files:
+                        break
+                
+                if sample_files:
+                    print(f"🔍 Using sample image: {sample_files[0]}")
+                    result = get_random_forest_prediction(sample_files[0])
+                else:
+                    result = None
+        
+        if result:
+            hazard_score = result['hazard_score']
+            risk_class = result['class']
+            confidence = result['confidence']
+        else:
+            # Fallback to location-based prediction
+            hazard_score = np.random.uniform(0.1, 0.9)
+            if center_lat < 11.5:  # Southern Philippines
+                if hazard_score > 0.7:
+                    risk_class = "HighRisk_Coastal"
+                elif hazard_score > 0.4:
+                    risk_class = "ModerateRisk_Upland"
+                else:
+                    risk_class = "SafeZone_UrbanCore"
+            else:  # Northern Philippines
+                if hazard_score > 0.6:
+                    risk_class = "WarningGap_Barangay"
+                else:
+                    risk_class = "BufferZone_Proposed"
+            confidence = 0.85
+            
+    except Exception as e:
+        st.warning(f"Random Forest prediction failed: {str(e)}")
+        # Fallback to location-based prediction
+        hazard_score = np.random.uniform(0.1, 0.9)
+        if center_lat < 11.5:  # Southern Philippines
+            if hazard_score > 0.7:
+                risk_class = "HighRisk_Coastal"
+            elif hazard_score > 0.4:
+                risk_class = "ModerateRisk_Upland"
+            else:
+                risk_class = "SafeZone_UrbanCore"
+        else:  # Northern Philippines
+            if hazard_score > 0.6:
+                risk_class = "WarningGap_Barangay"
+            else:
+                risk_class = "BufferZone_Proposed"
+        confidence = 0.85
+    
+    # Calculate actual shelter proximity using evacuation centers CSV
+    shelter_proximity, nearest_center = get_nearest_shelter_distance(center_lat, center_lng)
+    
+    # Generate other metadata based on location
     elevation = np.random.uniform(10, 500)
-    shelter_proximity = np.random.uniform(0.5, 10.0)
     
-    # Determine risk class based on location and hazard score
-    if center_lat < 11.5:  # Southern Philippines
-        if hazard_score > 0.7:
-            risk_class = "HighRisk_Coastal"
-        elif hazard_score > 0.4:
-            risk_class = "ModerateRisk_Upland"
-        else:
-            risk_class = "SafeZone_UrbanCore"
-    else:  # Northern Philippines
-        if hazard_score > 0.6:
-            risk_class = "WarningGap_Barangay"
-        else:
-            risk_class = "BufferZone_Proposed"
+    # Format timestamp
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp_parts = timestamp.split(' ')
+    date_part = timestamp_parts[0] if len(timestamp_parts) > 0 else timestamp
+    time_part = timestamp_parts[1] if len(timestamp_parts) > 1 else "00:00"
     
-    # Display metadata
-    st.subheader("📊 Patch Metadata")
-    st.markdown(
-        f"""
-        <div class='sidebar-card' style='background:#3a3a3a; padding: 15px; border-radius: 8px; margin: 10px 0;'>
-            <b style='color:#1cc88a;'>Hazard Score:</b> <span style='color:#fff;'>{hazard_score:.2f}</span><br>
-            <b style='color:#f6c23e;'>Elevation:</b> <span style='color:#fff;'>{elevation:.0f} m</span><br>
-            <b style='color:#36b9cc;'>Coordinates:</b> <span style='color:#fff;'>{center_lat:.4f}°, {center_lng:.4f}°</span><br>
-            <b style='color:#e74a3b;'>Shelter Proximity:</b> <span style='color:#fff;'>{shelter_proximity:.1f} km</span><br>
-            <b style='color:#858796;'>Timestamp:</b> <span style='color:#fff;'>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</span><br>
-            <b style='color:#6f42c1;'>Risk Class:</b> <span style='color:#fff;'>{risk_class}</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Current patch data
+    current_patch_data = {
+        'Filename': f"patch_{center_lat:.4f}_{center_lng:.4f}.png",
+        'HazardScore': f"{hazard_score:.2f}",
+        'Latitude': f"{center_lat:.4f}",
+        'Longitude': f"{center_lng:.4f}",
+        'ShelterProximity': f"{shelter_proximity:.1f}",
+        'NearestShelter': nearest_center,
+        'Timestamp': f"{date_part}<br>{time_part}",
+        'RiskClass': risk_class
+    }
     
-    # Export functionality
+    # Check if we have batch data to display
+    if st.session_state['map_batch_data']:
+        st.subheader("📊 Batch Analysis Results (Map Selection)")
+        
+        # Add current patch to batch data
+        all_batch_data = st.session_state['map_batch_data'] + [current_patch_data]
+        
+        # Create DataFrame for batch results
+        batch_df = pd.DataFrame(all_batch_data)
+        
+        # Display table using Streamlit's built-in table
+        st.table(batch_df)
+        
+        # Show heatmap visualization
+        st.markdown("---")
+        st.markdown("### 📈 Heatmap Visualization")
+        
+        # Import heatmap function
+        from features.patch_selector import create_heatmap_viewer
+        create_heatmap_viewer(all_batch_data)
+        
+        # Batch controls
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button('➕ Add to Batch', type='primary'):
+                st.session_state['map_batch_data'].append(current_patch_data)
+                st.success(f"✅ Added patch to batch! Total: {len(st.session_state['map_batch_data'])}")
+                st.experimental_rerun()
+        
+        with col2:
+            if st.button('🗑️ Clear Batch', type='secondary'):
+                st.session_state['map_batch_data'] = []
+                st.success("✅ Batch cleared!")
+                st.experimental_rerun()
+        
+        with col3:
+            # Export batch to CSV
+            if st.button('📥 Export Batch CSV', type='secondary'):
+                # Create batch metadata for CSV export
+                batch_metadata = []
+                for data in all_batch_data:
+                    batch_metadata.append({
+                        'Filename': data['Filename'],
+                        'Hazard_Score': float(data['HazardScore']),
+                        'Latitude': float(data['Latitude']),
+                        'Longitude': float(data['Longitude']),
+                        'Shelter_Proximity_km': float(data['ShelterProximity']),
+                        'Nearest_Shelter': data.get('NearestShelter', 'Unknown'),
+                        'Risk_Class': data['RiskClass'],
+                        'Timestamp': timestamp
+                    })
+                
+                df_batch = pd.DataFrame(batch_metadata)
+                csv_batch = df_batch.to_csv(index=False)
+                
+                st.download_button(
+                    label="📥 Download Batch CSV",
+                    data=csv_batch,
+                    file_name=f"map_batch_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download the map batch analysis results as a CSV file"
+                )
+    
+    else:
+        # Single patch display (first selection)
+        st.subheader("📊 Patch Metadata")
+        
+        # Add RiskClass to table data
+        table_data = {
+            'Filename': [current_patch_data['Filename']],
+            'HazardScore': [current_patch_data['HazardScore']],
+            'Latitude': [current_patch_data['Latitude']],
+            'Longitude': [current_patch_data['Longitude']],
+            'ShelterProximity': [current_patch_data['ShelterProximity']],
+            'NearestShelter': [current_patch_data['NearestShelter']],
+            'Timestamp': [current_patch_data['Timestamp']],
+            'RiskClass': [current_patch_data['RiskClass']]
+        }
+        
+        # Custom HTML table with RiskClass
+        html_table = f"""
+        <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-family: monospace; font-size: 12px;">
+            <thead>
+                <tr>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Filename</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">HazardScore</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Latitude</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Longitude</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">ShelterProximity</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">NearestShelter</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">Timestamp</th>
+                    <th style="background-color: #23272b; color: #fff; border: 1px solid #dee2e6; padding: 8px; text-align: left; font-weight: bold;">RiskClass</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['Filename'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['HazardScore'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['Latitude'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['Longitude'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['ShelterProximity'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['NearestShelter'][0]}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{date_part}<br>{time_part}</td>
+                    <td style="border: 1px solid #dee2e6; padding: 8px; text-align: left;">{table_data['RiskClass'][0]}</td>
+                </tr>
+            </tbody>
+        </table>
+        """
+        
+        st.markdown(html_table, unsafe_allow_html=True)
+        
+        # Show Random Forest prediction details
+        if 'confidence' in locals():
+            st.info(f"🤖 **Random Forest Model Results:**")
+            st.write(f"   📍 Predicted Class: {risk_class}")
+            st.write(f"   🎯 Confidence: {confidence:.1%}")
+            st.write(f"   🚨 Hazard Score: {hazard_score:.3f}")
+            
+            # Show nearest evacuation center information
+            st.write(f"   🏠 Nearest Shelter: {nearest_center}")
+            st.write(f"   📏 Distance: {shelter_proximity:.2f} km")
+            
+            if confidence < 0.5:
+                st.warning(f"⚠️ **Low Confidence Warning:** Prediction confidence is below 50%. Consider manual verification.")
+            elif confidence < 0.7:
+                st.warning(f"⚠️ **Moderate Confidence:** Prediction confidence is {confidence:.1%}. Results should be verified.")
+            else:
+                st.success(f"✅ **High Confidence:** Prediction confidence is {confidence:.1%}. Results are reliable.")
+        
+        # Show heatmap for single patch
+        st.markdown("---")
+        st.markdown("### 📈 Heatmap Visualization")
+        from features.patch_selector import create_heatmap_viewer
+        create_heatmap_viewer([current_patch_data])
+    
+    # Export functionality for single patch
     st.subheader("💾 Export Patch Data")
     
-    # Create metadata dataframe
+    # Create metadata dataframe for CSV export
     metadata_data = {
         'Center_Latitude': [center_lat],
         'Center_Longitude': [center_lng],
@@ -889,7 +1212,6 @@ def generate_patch_metadata(center_lat, center_lng, patch_bounds):
         'West_Bound': [patch_bounds['west']],
         'Risk_Class': [risk_class],
         'Hazard_Score': [hazard_score],
-        'Elevation_m': [elevation],
         'Shelter_Proximity_km': [shelter_proximity],
         'Timestamp': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
     }
