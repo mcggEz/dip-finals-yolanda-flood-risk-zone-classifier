@@ -462,6 +462,9 @@ def display_patch_image(center_lat, center_lng, patch_bounds):
                 st.write(f"  🟧 {overlay}: Image overlay with opacity control")
             elif 'Rain-Induced' in overlay:
                 st.write(f"  🔴 {overlay}: Image overlay with opacity control")
+    
+  
+    
 
     
     try:
@@ -921,6 +924,14 @@ def fallback_to_tile_method(center_lat, center_lng):
         if patch_img.size != (224, 224):
             patch_img = patch_img.resize((224, 224), Image.Resampling.LANCZOS)
         
+        # Save the generated patch image for Random Forest classification
+        patch_filename = f"captured_patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        patch_img.save(patch_filename)
+        
+        # Store the filename in session state for Random Forest analysis
+        st.session_state['captured_patch_filename'] = patch_filename
+        st.session_state['captured_patch_coords'] = (center_lat, center_lng)
+        
         # Display the patch image
         caption = f"224x224 Pixel Patch at {center_lat:.4f}°, {center_lng:.4f}° (Base satellite only)"
         st.image(patch_img, caption=caption, use_container_width=False)
@@ -933,7 +944,7 @@ def fallback_to_tile_method(center_lat, center_lng):
         st.download_button(
             label="📥 Download Patch PNG",
             data=img_data,
-            file_name=f"patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+            file_name=patch_filename,
             mime="image/png"
         )
         
@@ -984,20 +995,75 @@ def generate_patch_metadata(center_lat, center_lng, patch_bounds):
                 print(f"🔍 Using recent captured patch: {latest_patch}")
                 result = get_random_forest_prediction(latest_patch)
             else:
-                # If no captured patch exists, use a sample from DisasterData
-                sample_files = []
-                for root, dirs, files in os.walk('DisasterData'):
-                    for file in files:
-                        if file.endswith('.png'):
-                            sample_files.append(os.path.join(root, file))
-                            break
-                    if sample_files:
-                        break
-                
-                if sample_files:
-                    print(f"🔍 Using sample image: {sample_files[0]}")
-                    result = get_random_forest_prediction(sample_files[0])
-                else:
+                # If no captured patch exists, try to generate one using the fallback method
+                print(f"🔍 No captured patch found - attempting to generate one for coordinates ({center_lat:.4f}, {center_lng:.4f})")
+                try:
+                    # Generate a patch using the tile method
+                    from PIL import Image
+                    import math
+                    import requests
+                    import io
+                    
+                    # Calculate zoom level and tile coordinates for ESRI satellite tiles
+                    zoom_level = 15
+                    tile_size = 256
+                    
+                    # Convert lat/lng to tile coordinates
+                    lat_rad = math.radians(center_lat)
+                    n = 2.0 ** zoom_level
+                    xtile = int((center_lng + 180.0) / 360.0 * n)
+                    ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+                    
+                    # Calculate pixel offset within the tile
+                    x_pixel = int((center_lng + 180.0) / 360.0 * n * tile_size) % tile_size
+                    y_pixel = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n * tile_size) % tile_size
+                    
+                    # Create a larger canvas to stitch tiles together
+                    canvas_width = tile_size * 2
+                    canvas_height = tile_size * 2
+                    canvas = Image.new('RGB', (canvas_width, canvas_height))
+                    
+                    # Download and stitch tiles
+                    for i in range(2):
+                        for j in range(2):
+                            current_xtile = xtile + i - 1
+                            current_ytile = ytile + j - 1
+                            
+                            tile_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom_level}/{current_ytile}/{current_xtile}"
+                            
+                            response = requests.get(tile_url, timeout=10)
+                            if response.status_code == 200:
+                                tile_img = Image.open(io.BytesIO(response.content))
+                                paste_x = i * tile_size
+                                paste_y = j * tile_size
+                                canvas.paste(tile_img, (paste_x, paste_y))
+                    
+                    # Calculate the center pixel in the canvas
+                    center_x = tile_size + x_pixel
+                    center_y = tile_size + y_pixel
+                    
+                    # Crop the 224x224 pixel area from the center
+                    patch_size = 112
+                    start_x = max(0, center_x - patch_size)
+                    end_x = min(canvas_width, center_x + patch_size)
+                    start_y = max(0, center_y - patch_size)
+                    end_y = min(canvas_height, center_y + patch_size)
+                    
+                    patch_img = canvas.crop((start_x, start_y, end_x, end_y))
+                    
+                    # Resize to exactly 224x224 if needed
+                    if patch_img.size != (224, 224):
+                        patch_img = patch_img.resize((224, 224), Image.Resampling.LANCZOS)
+                    
+                    # Save the generated patch
+                    generated_patch_filename = f"captured_patch_{center_lat:.4f}_{center_lng:.4f}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    patch_img.save(generated_patch_filename)
+                    
+                    print(f"🔍 Generated patch: {generated_patch_filename}")
+                    result = get_random_forest_prediction(generated_patch_filename)
+                    
+                except Exception as e:
+                    print(f"🔍 Failed to generate patch: {e}")
                     result = None
         
         if result:
@@ -1005,39 +1071,17 @@ def generate_patch_metadata(center_lat, center_lng, patch_bounds):
             risk_class = result['class']
             confidence = result['confidence']
         else:
-            # Fallback to location-based prediction
-            hazard_score = np.random.uniform(0.1, 0.9)
-            if center_lat < 11.5:  # Southern Philippines
-                if hazard_score > 0.7:
-                    risk_class = "HighRisk_Coastal"
-                elif hazard_score > 0.4:
-                    risk_class = "ModerateRisk_Upland"
-                else:
-                    risk_class = "SafeZone_UrbanCore"
-            else:  # Northern Philippines
-                if hazard_score > 0.6:
-                    risk_class = "WarningGap_Barangay"
-                else:
-                    risk_class = "BufferZone_Proposed"
-            confidence = 0.85
+            # If Random Forest prediction fails, use fallback values
+            hazard_score = 0.5
+            risk_class = "SafeZone_UrbanCore"
+            confidence = 0.7
             
     except Exception as e:
         st.warning(f"Prediction failed: {str(e)}")
-        # Fallback to location-based prediction
-        hazard_score = np.random.uniform(0.1, 0.9)
-        if center_lat < 11.5:  # Southern Philippines
-            if hazard_score > 0.7:
-                risk_class = "HighRisk_Coastal"
-            elif hazard_score > 0.4:
-                risk_class = "ModerateRisk_Upland"
-            else:
-                risk_class = "SafeZone_UrbanCore"
-        else:  # Northern Philippines
-            if hazard_score > 0.6:
-                risk_class = "WarningGap_Barangay"
-            else:
-                risk_class = "BufferZone_Proposed"
-        confidence = 0.85
+        # Use simple fallback values
+        hazard_score = 0.5
+        risk_class = "SafeZone_UrbanCore"
+        confidence = 0.7
     
     # Calculate actual shelter proximity using evacuation centers CSV
     shelter_proximity, nearest_center = get_nearest_shelter_distance(center_lat, center_lng)
