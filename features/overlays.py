@@ -378,7 +378,7 @@ def render_overlay_main_content(show_hazard, show_pagasa, show_evac, show_buffer
         if captured_patch_filename and os.path.exists(captured_patch_filename):
             st.success(f"🎯 **Patch Captured Successfully!** Center {selected['center_lat']:.6f}°, {selected['center_lng']:.6f}°")
             st.info(f"📁 Captured image: {captured_patch_filename}")
-            st.info("🤖 **Ready for Random Forest analysis** - Scroll down to see the analysis results")
+          
         
            
         
@@ -1022,7 +1022,7 @@ def generate_patch_metadata(center_lat, center_lng, patch_bounds):
             confidence = 0.85
             
     except Exception as e:
-        st.warning(f"Random Forest prediction failed: {str(e)}")
+        st.warning(f"Prediction failed: {str(e)}")
         # Fallback to location-based prediction
         hazard_score = np.random.uniform(0.1, 0.9)
         if center_lat < 11.5:  # Southern Philippines

@@ -141,7 +141,7 @@ if (
         from PIL import Image
         image = Image.open(uploaded_file)
         st.image(image, caption="Uploaded Patch", use_container_width=True)
-        display_metadata_and_export(uploaded_file.name, "uploaded_file")
+        display_metadata_and_export(uploaded_file, "uploaded_file")
     elif trigger == 'batch' and len(uploaded_files) > 1:
         display_batch_metadata_and_export(uploaded_files)
 

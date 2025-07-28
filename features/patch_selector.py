@@ -108,10 +108,13 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
                 image_path = source_name
             
             result = get_random_forest_prediction(image_path)
+            
             if result:
                 hazard_score = result['hazard_score']
                 predicted_class = result['class']
                 confidence = result['confidence']
+                
+
                 
                 # Check if confidence is too low
                 if confidence < 0.3:  # 30% threshold
@@ -136,6 +139,7 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
         # Use fallback coordinates for file uploads
         latitude = 10.6487
         longitude = 122.9789
+        shelter_proximity = 0.0  # Default value for file uploads (no shelter proximity calculation)
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -190,10 +194,20 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
     
             # Show Random Forest prediction details
     if 'confidence' in locals():
-            st.info(f"🤖 **Random Forest Model Results:**")
+          
             st.write(f"   📍 Predicted Class: {predicted_class}")
             st.write(f"   🎯 Confidence: {confidence:.1%}")
             st.write(f"   🚨 Hazard Score: {hazard_score:.3f}")
+            
+            # Show all class probabilities
+            if result and 'probabilities' in result:
+                st.write(f"📊 **All Class Probabilities:**")
+                for class_name, prob in result['probabilities'].items():
+                    # Highlight the predicted class
+                    if class_name == predicted_class:
+                        st.write(f"   🎯 **{class_name}:** {prob:.1%} (PREDICTED)")
+                    else:
+                        st.write(f"   📋 {class_name}: {prob:.1%}")
             
             # Add confidence warning
             if confidence < 0.5:
@@ -223,7 +237,6 @@ def display_metadata_and_export(source_name, source_type, patch_data=None):
         st.experimental_rerun()
     
     # Show predicted class separately
-    st.info(f"🎯 **Predicted Class:** {predicted_class}")
     
     # Create metadata dataframe for CSV export
     metadata_data = {
@@ -319,9 +332,13 @@ def display_batch_metadata_and_export(uploaded_files):
                     if result:
                         hazard_score = result['hazard_score']
                         predicted_class = result['class']
+                        confidence = result['confidence']
+                        probabilities = result.get('probabilities', {})
                     else:
                         hazard_score = 0.16
                         predicted_class = "SafeZone_UrbanCore"
+                        confidence = 0.85
+                        probabilities = {}
                     
                     # Clean up temp file
                     import os
@@ -332,6 +349,8 @@ def display_batch_metadata_and_export(uploaded_files):
                     st.warning(f"Random Forest prediction failed for {uploaded_file.name}: {str(e)}")
                     hazard_score = 0.16
                     predicted_class = "SafeZone_UrbanCore"
+                    confidence = 0.85
+                    probabilities = {}
                 
                 # Use fallback coordinates for file uploads
                 latitude = 10.6487 + (i * 0.01)
@@ -344,18 +363,51 @@ def display_batch_metadata_and_export(uploaded_files):
                     'Latitude': f"{latitude:.4f}",
                     'Longitude': f"{longitude:.4f}",
                     'Timestamp': f"{date_part}<br>{time_part}",
-                    'RiskClass': predicted_class
+                    'RiskClass': predicted_class,
+                    'Confidence': f"{confidence:.1%}",
+                    'Probabilities': probabilities  # Keep for expander, not for table
                 })
                 
             except Exception as e:
                 st.error(f"Error processing {uploaded_file.name}: {str(e)}")
     
     if batch_data:
-        # Create DataFrame for batch results
-        batch_df = pd.DataFrame(batch_data)
+        # Create DataFrame for batch results (excluding Probabilities for table display)
+        table_data = []
+        for data in batch_data:
+            table_data.append({
+                'Filename': data['Filename'],
+                'HazardScore': data['HazardScore'],
+                'Latitude': data['Latitude'],
+                'Longitude': data['Longitude'],
+                'Timestamp': data['Timestamp'],
+                'RiskClass': data['RiskClass'],
+                'Confidence': data['Confidence']
+            })
+        batch_df = pd.DataFrame(table_data)
         
         # Display table using Streamlit's built-in table
         st.table(batch_df)
+        
+        # Show detailed probabilities for each file
+        st.markdown("---")
+        st.markdown("### 📊 Detailed Class Probabilities")
+        
+        for i, data in enumerate(batch_data):
+            with st.expander(f"📁 {data['Filename']} - {data['RiskClass']} ({data['Confidence']})"):
+                st.write(f"**Predicted Class:** {data['RiskClass']}")
+                st.write(f"**Confidence:** {data['Confidence']}")
+                st.write(f"**Hazard Score:** {data['HazardScore']}")
+                
+                if 'Probabilities' in data and data['Probabilities']:
+                    st.write("**All Class Probabilities:**")
+                    for class_name, prob in data['Probabilities'].items():
+                        if class_name == data['RiskClass']:
+                            st.write(f"   🎯 **{class_name}:** {prob:.1%} (PREDICTED)")
+                        else:
+                            st.write(f"   📋 {class_name}: {prob:.1%}")
+                else:
+                    st.write("**Probabilities:** Not available")
         
         # Always show Heatmap Visualization after batch table
         st.markdown("---")
